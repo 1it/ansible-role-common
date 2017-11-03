@@ -1,0 +1,6 @@
+---
+- name: Common | Make sure some basic tools are installed | See list in defalts
+  yum:
+    name: {{ item }}
+  with_items:
+    - "{{ yum_packages }}"

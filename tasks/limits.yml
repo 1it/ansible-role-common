@@ -1,0 +1,8 @@
+---
+- name: Common | Install ulimits.conf
+  template:
+    src: ulimits.conf.j2
+    dest: /etc/security/limits.d/limits.conf
+    owner: root
+    group: root
+    mode: 0644

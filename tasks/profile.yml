@@ -1,0 +1,5 @@
+---
+- name: Profile | Copy roots ~/.bashrc
+  copy:
+    src=bashrc
+    dest=/root/.bashrc

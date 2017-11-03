@@ -1,0 +1,24 @@
+---
+- name: Copy .repo files
+  copy: 
+    src: "{{ item }}"
+    dest: /etc/yum.repos.d/
+  with_fileglob:
+    - '*.repo'
+
+- name: Setup rpm keys
+  rpm_key:
+    state: present
+    key: "{{ item }}"
+  with_items:
+    - "{{ yum_rpm_keys }}"
+
+- name: Add repository
+  yum:
+    name: "{{ item }}"
+    state: present
+    validate_certs: False
+    update_cache: yes
+  with_items:
+    - "{{ yum_repos_list }}"
+

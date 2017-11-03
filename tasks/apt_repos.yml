@@ -1,0 +1,12 @@
+---
+- name: Repos | Update the sources list (/etc/apt/sources.list)
+  template:
+    src: "{{ ansible_distribution }}.sources.list.j2"
+    dest: /etc/apt/sources.list
+    owner: root
+    group: root
+    mode: 0644
+
+- name: Repos | Update the apt cache
+  apt:
+    update_cache: yes

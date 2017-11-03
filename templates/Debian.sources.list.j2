@@ -1,0 +1,19 @@
+# {{ country }} mirror
+deb http://ftp.{{ country }}.debian.org/debian/ {{ ansible_distribution_release }} main non-free contrib
+deb-src http://ftp.{{ country }}.debian.org/debian/ {{ ansible_distribution_release }} main non-free contrib
+
+deb http://ftp.{{ country }}.debian.org/debian/ {{ ansible_distribution_release }}-updates main non-free contrib
+deb-src http://ftp.{{ country }}.debian.org/debian/ {{ ansible_distribution_release }}-updates main non-free contrib
+
+# Backupmirror
+deb     http://cdn.debian.net/debian/ {{ ansible_distribution_release }} main non-free contrib
+deb-src http://cdn.debian.net/debian/ {{ ansible_distribution_release }} main non-free contrib
+
+# Security updates | see /etc/apt/sources.list.d/security.list
+# deb     http://security.debian.org/  {{ ansible_distribution_release }}/updates  main contrib non-free
+# deb-src http://security.debian.org/  {{ ansible_distribution_release }}/updates  main contrib non-free
+
+# {{ ansible_distribution_release }} backports
+deb http://ftp.{{ country }}.debian.org/debian/ {{ ansible_distribution_release }}-backports main non-free contrib
+deb-src http://ftp.{{ country }}.debian.org/debian/ {{ ansible_distribution_release }}-backports main non-free contrib
+
