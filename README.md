@@ -1,5 +1,5 @@
-# Common
-Ansible Role for the all servers
+# Ansible role common
+Ansible Role for common servers setup tasks
 
 ## Requirements
 Ansible version => 2.3
