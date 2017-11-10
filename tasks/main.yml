@@ -1,40 +1,35 @@
 ---
-- include: apt_repos.yml
+- include_tasks: apt_repos.yml
   when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
-  static: no
   tags:
     - repos
 
-- include: yum_repos.yml
+- include_tasks: yum_repos.yml
   when: ansible_distribution == 'CentOS' or ansible_distribution == 'RedHat'
-  static: no
   tags:
     - repos
 
-- include: apt.yml
+- include_tasks: apt.yml
   when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
-  static: no
   tags:
     - apt
     - pkg
 
-- include: yum.yml
+- include_tasks: yum.yml
   when: ansible_distribution == 'CentOS' or ansible_distribution == 'RedHat'
-  static: no
   tags:
     - yum
     - pkg
 
-- include: limits.yml
+- include_tasks: limits.yml
   tags:
     - ulimit
 
-- include: locales.yml
+- include_tasks: locales.yml
   when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
-  static: no
   tags:
     - locales
 
-- include: profile.yml
+- include_tasks: profile.yml
   tags:
     - profile
