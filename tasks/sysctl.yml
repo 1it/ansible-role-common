@@ -1,0 +1,8 @@
+---
+- name: Sysctl | Adjust kernel params
+  sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    state: "{{ item.state | default('present')}}"
+  with_items:
+    - "{{ sysctl_params }}"

@@ -13,6 +13,8 @@ system_limits:
     - '* soft nofile 65536'
     - '* hard nofile 65536'
 
+sysctl_params: []
+
 apt_packages:
     - apt-transport-https
     - build-essential
@@ -52,6 +54,10 @@ yum_packages:
     - sshpass
     - vim-common
     - yum-utils
+
+apt_repos_list: []
+#  - repo: "deb http://packages.cloud.google.com/apt debian main"
+#    key: "https://packages.cloud.google.com/apt/doc/apt-key.gpg"
 
 # Set epel and ius repos | https://ius.io/GettingStarted/
 yum_repos_list:
