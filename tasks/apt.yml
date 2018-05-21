@@ -2,5 +2,6 @@
 - name: Common | Make sure some basic tools are installed | See list in defalts
   apt:
     name: "{{ item }}"
+    state: latest
   with_items:
     - "{{ apt_packages }}"
