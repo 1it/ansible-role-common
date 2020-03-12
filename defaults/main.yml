@@ -1,10 +1,7 @@
-country: ru
 do_upgrade: False
 
 locales:
     - en_US.UTF-8
-    - ru_RU.CP1251
-    - ru_RU.UTF-8
 
 system_limits:
   ulimits:
@@ -19,6 +16,7 @@ apt_packages:
     - apt-transport-https
     - build-essential
     - bash-completion
+    - cloud-utils
     - curl
     - fail2ban
     - git
