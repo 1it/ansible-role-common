@@ -1,5 +1,5 @@
 ---
-- name: Common | Make sure some basic tools are installed | See list in defalts
+- name: Apt | Make sure some basic tools are installed | See list in defalts
   apt:
     name: "{{ item }}"
     state: latest

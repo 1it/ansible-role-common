@@ -1,19 +1,19 @@
 ---
-- name: Copy .repo files
+- name: Yum | Copy .repo files
   copy: 
     src: "{{ item }}"
     dest: /etc/yum.repos.d/
   with_fileglob:
     - '*.repo'
 
-- name: Setup rpm keys
+- name: Yum | Setup rpm keys
   rpm_key:
     state: present
     key: "{{ item }}"
   with_items:
     - "{{ yum_rpm_keys }}"
 
-- name: Add repository
+- name: Yum | Add repository
   yum:
     name: "{{ item }}"
     state: present

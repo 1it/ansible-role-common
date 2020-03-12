@@ -1,5 +1,5 @@
 ---
-- name: Common | Install locales
+- name: Locales | Set the system locales
   locale_gen:
     name: "{{ item }}"
     state: present
