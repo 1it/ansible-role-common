@@ -11,6 +11,7 @@
   apt_key:
     url: "{{ item.key }}"
     state: present
+    keyring: "{{ item.keyring | default(omit) }}"
   with_items:
     - "{{ apt_repos_list }}"
 
@@ -18,18 +19,16 @@
   apt_repository:
     repo: "{{ item.repo }}"
     state: present
+    update_cache: no
   with_items:
     - "{{ apt_repos_list }}"
-
-- name: Apt | Update the apt cache
-  apt:
-    update_cache: yes
 
 - name: Apt | Add the Debian Security repository
   apt_repository:
     repo: "deb http://security.debian.org/ {{ ansible_distribution_release }}/updates main"
     state: present
     filename: security
+    update_cache: no
   when: ansible_distribution == 'Debian'
 
 - name: Apt | Update the apt cache
