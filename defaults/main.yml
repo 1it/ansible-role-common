@@ -25,6 +25,7 @@ apt_packages:
     - iputils-ping
     - jnettop
     - less
+    - locales
     - lsof
     - mc
     - netcat
