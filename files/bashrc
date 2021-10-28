@@ -1,6 +1,6 @@
 # ~/.bashrc: executed by bash(1) for non-login shells.
 
-ADMIN_MAIL=i.tuzhilkin@kefirgames.com
+# ADMIN_MAIL=root
 
 # Logging root access to email
 # echo 'ALERT - Root Shell Access to '$HOSTNAME' on:' `date` `who` | mail -s "$HOSTNAME Alert: Root Access from `who | cut -d'(' -f2 | cut -d')' -f1`" $ADMIN_MAIL
@@ -49,7 +49,7 @@ if [ -x /usr/bin/dircolors ]; then
     #alias dir='dir --color=auto'
     #alias vdir='vdir --color=auto'
 
-    #alias grep='grep --color=auto'
+    alias grep='grep --color=auto'
     #alias fgrep='fgrep --color=auto'
     #alias egrep='egrep --color=auto'
 fi
