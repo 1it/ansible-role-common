@@ -1,10 +1,5 @@
 # ~/.bashrc: executed by bash(1) for non-login shells.
 
-# ADMIN_MAIL=root
-
-# Logging root access to email
-# echo 'ALERT - Root Shell Access to '$HOSTNAME' on:' `date` `who` | mail -s "$HOSTNAME Alert: Root Access from `who | cut -d'(' -f2 | cut -d')' -f1`" $ADMIN_MAIL
-
 # set a fancy prompt (non-color, unless we know we "want" color)
 case "$TERM" in
     xterm-color) color_prompt=yes;;
