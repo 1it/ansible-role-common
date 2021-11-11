@@ -1,5 +1,5 @@
 ---
 - name: Profile | Set the ~/.bashrc file for root 
   copy:
-    src=bashrc
-    dest=/root/.bashrc
+    src: bashrc
+    dest: /root/.bashrc
