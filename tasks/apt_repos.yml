@@ -23,13 +23,21 @@
   with_items:
     - "{{ apt_repos_list }}"
 
-- name: Apt | Add the Debian Security repository
+- name: Apt | Add the Debian Security repository | for older distros
   apt_repository:
     repo: "deb http://security.debian.org/ {{ ansible_distribution_release }}/updates main"
     state: present
     filename: security
     update_cache: no
-  when: ansible_distribution == 'Debian'
+  when: (ansible_distribution == "Debian" and ansible_distribution_major_version <= "10")
+
+- name: Apt | Add the Debian Security repository | Bullseye
+  apt_repository:
+    repo: "deb http://security.debian.org/ {{ ansible_distribution_release }}-security main"
+    state: present
+    filename: security
+    update_cache: no
+  when: (ansible_distribution == "Debian" and ansible_distribution_major_version >= "11")
 
 - name: Apt | Update the apt cache
   apt:
