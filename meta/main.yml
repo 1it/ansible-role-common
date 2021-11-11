@@ -2,7 +2,7 @@ galaxy_info:
   author: Ivan Tuzhilkin
   description: Ansible role to perform common setup tasks
   license: Apache License 2.0
-  min_ansible_version: '2.3.0'
+  min_ansible_version: '2.9.0'
 
   platforms:
     - name: EL
@@ -10,15 +10,18 @@ galaxy_info:
         - 7
     - name: Ubuntu
       versions:
-        - trusty
         - xenial
+        - focal
     - name: Debian
       versions:
-        - jessie
         - stretch
+        - buster
+        - bullseye
 
   galaxy_tags:
     - system
-    - common
+    - commom
+    - apt
+    - yum
 
 dependencies: []

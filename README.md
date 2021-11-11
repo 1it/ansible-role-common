@@ -2,7 +2,7 @@
 Ansible Role for common servers setup tasks
 
 ## Requirements
-Ansible version => 2.3
+Ansible version => 2.9
 
 ## Role tags:
   - apt - apt-packages setup/update 
@@ -10,10 +10,11 @@ Ansible version => 2.3
   - locales - set default system locales
   - yum - yum-packages setup/update
   - ulimit - set system limits (e.g. open files limit)
+  - profile - copy bashrc file for root
+
 # Vars
 ## Default role variables
 ```yaml
-country: ru
 do_upgrade: False
 
 locales:
@@ -40,13 +41,20 @@ apt_packages:
 - hosts: all
   roles:
     - common
+  vars:
+    apt_repos_list:
+      - repo: "deb [arch=amd64] https://apt.releases.hashicorp.com {{ ansible_distribution_release }} main"
+        key: "https://apt.releases.hashicorp.com/gpg"
+      - repo: deb [signed-by=/etc/apt/trusted.gpg.d/kubernetes-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main
+        key: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+        keyring: /etc/apt/trusted.gpg.d/kubernetes-keyring.gpg
+
+    apt_packages:
+      - nomad
+      - consul
+      - kubectl
 ```
 # Playbook run
-## For all hosts
 ```
-ansible-playbook -i production playbooks/common.yml
-```
-## For single host
-```
-ansible-playbook -i develop playbooks/common.yml --limit backend-01
+ansible-playbook playbooks/common.yml --skip-tags ulimit,profile
 ```
