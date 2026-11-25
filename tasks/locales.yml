@@ -5,18 +5,32 @@
     state: present
     update_cache: true
     cache_valid_time: "{{ apt_cache_valid_time }}"
+  register: _common_locales_install
   when: ansible_facts['os_family'] == 'Debian'
 
+# In check mode on a host without the locales package /etc/locale.gen does not
+# exist yet and locale_gen would fail.
 - name: Locales | Generate system locales (Debian/Ubuntu)
   community.general.locale_gen:
     name: "{{ item }}"
     state: present
   loop: "{{ locales }}"
+  when:
+    - ansible_facts['os_family'] == 'Debian'
+    - not (ansible_check_mode and _common_locales_install is changed)
+
+# Debian 13+ ships /etc/default/locale as a symlink to /etc/locale.conf. In
+# check mode lineinfile compares the symlink's own mode (0777) with "0644" and
+# reports a change on every run, so write to the file behind the link.
+- name: Locales | Resolve the default locale file (Debian/Ubuntu)
+  ansible.builtin.stat:
+    path: /etc/default/locale
+  register: _common_locale_file
   when: ansible_facts['os_family'] == 'Debian'
 
 - name: Locales | Set default system locale (Debian/Ubuntu)
   ansible.builtin.lineinfile:
-    path: /etc/default/locale
+    path: "{{ _common_locale_file.stat.lnk_source | default('/etc/default/locale') }}"
     regexp: '^LANG='
     line: "LANG={{ default_locale }}"
     create: true

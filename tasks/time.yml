@@ -8,8 +8,11 @@
   ansible.builtin.package:
     name: chrony
     state: present
+  register: _common_chrony_install
   when: manage_ntp | bool
 
+# In check mode on a host without chrony the package is not installed, so the
+# unit does not exist yet and the systemd module would fail.
 - name: Time | Ensure chrony service is enabled and running
   ansible.builtin.systemd:
     name: "{{ 'chronyd' if ansible_facts['os_family'] == 'RedHat' else 'chrony' }}"
@@ -18,3 +21,4 @@
   when:
     - manage_ntp | bool
     - ansible_facts['service_mgr'] == 'systemd'
+    - not (ansible_check_mode and _common_chrony_install is changed)
