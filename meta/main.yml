@@ -1,27 +1,33 @@
+---
 galaxy_info:
+  role_name: common
   author: Ivan Tuzhilkin
-  description: Ansible role to perform common setup tasks
+  description: Ansible role to perform common server setup and high-load baseline tuning
   license: Apache License 2.0
-  min_ansible_version: '2.9.0'
+  min_ansible_version: "2.12"
 
   platforms:
     - name: EL
       versions:
-        - 7
+        - "8"
+        - "9"
+        - "10"
     - name: Ubuntu
       versions:
-        - xenial
-        - focal
+        - noble
+        - resolute
     - name: Debian
       versions:
-        - stretch
-        - buster
-        - bullseye
+        - bookworm
+        - trixie
 
   galaxy_tags:
     - system
-    - commom
+    - common
     - apt
     - yum
+    - dnf
+    - sysctl
+    - limits
 
 dependencies: []

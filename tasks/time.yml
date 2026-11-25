@@ -1,0 +1,20 @@
+---
+- name: Time | Set system timezone
+  community.general.timezone:
+    name: "{{ timezone }}"
+  when: manage_timezone | bool
+
+- name: Time | Install chrony NTP daemon
+  ansible.builtin.package:
+    name: chrony
+    state: present
+  when: manage_ntp | bool
+
+- name: Time | Ensure chrony service is enabled and running
+  ansible.builtin.systemd:
+    name: "{{ 'chronyd' if ansible_facts['os_family'] == 'RedHat' else 'chrony' }}"
+    enabled: true
+    state: started
+  when:
+    - manage_ntp | bool
+    - ansible_facts['service_mgr'] == 'systemd'

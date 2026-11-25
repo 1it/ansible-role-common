@@ -1,8 +1,76 @@
 ---
-- name: Sysctl | Adjust kernel params
-  sysctl:
+- name: Sysctl | Attempt to load tcp_bbr kernel module
+  community.general.modprobe:
+    name: tcp_bbr
+    state: present
+  register: _common_bbr_modprobe
+  failed_when: false
+  when: sysctl_enable_bbr | bool
+
+- name: Sysctl | Check available TCP congestion control algorithms
+  ansible.builtin.slurp:
+    src: /proc/sys/net/ipv4/tcp_available_congestion_control
+  register: _common_tcp_cc
+  failed_when: false
+  when: sysctl_enable_bbr | bool
+
+- name: Sysctl | Determine whether BBR congestion control is available
+  ansible.builtin.set_fact:
+    _common_bbr_available: >-
+      {{
+        (sysctl_enable_bbr | bool)
+        and (_common_tcp_cc is defined)
+        and ('content' in _common_tcp_cc)
+        and ('bbr' in (_common_tcp_cc.content | b64decode).split())
+      }}
+
+- name: Sysctl | Persist tcp_bbr module load on boot
+  ansible.builtin.copy:
+    content: "tcp_bbr\n"
+    dest: /etc/modules-load.d/99-bbr.conf
+    owner: root
+    group: root
+    mode: "0644"
+  when:
+    - _common_bbr_available | bool
+    - _common_bbr_modprobe is succeeded
+
+- name: Sysctl | Build deduplicated effective sysctl parameter list
+  ansible.builtin.set_fact:
+    _common_sysctl_effective: >-
+      {{
+        dict(
+          _common_sysctl_combined | map(attribute='key') | zip(_common_sysctl_combined)
+        ).values() | list
+      }}
+  vars:
+    _common_bbr_params: >-
+      {{
+        [
+          {'key': 'net.core.default_qdisc', 'value': 'fq'},
+          {'key': 'net.ipv4.tcp_congestion_control', 'value': 'bbr'}
+        ]
+        if (_common_bbr_available | bool)
+        else []
+      }}
+    _common_sysctl_combined: "{{ sysctl_params + _common_bbr_params + sysctl_extra_params }}"
+
+- name: Sysctl | Ensure sysctl drop-in directory exists
+  ansible.builtin.file:
+    path: "{{ sysctl_file | dirname }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: _common_sysctl_effective | length > 0
+
+- name: Sysctl | Adjust kernel parameters
+  ansible.posix.sysctl:
     name: "{{ item.key }}"
     value: "{{ item.value }}"
-    state: "{{ item.state | default('present')}}"
-  with_items:
-    - "{{ sysctl_params }}"
+    state: "{{ item.state | default('present') }}"
+    sysctl_file: "{{ sysctl_file }}"
+    sysctl_set: true
+    reload: true
+  loop: "{{ _common_sysctl_effective }}"
+  when: _common_sysctl_effective | length > 0

@@ -1,6 +1,14 @@
 ---
-- name: Apt | Make sure some basic tools are installed | See list in defaults
-  apt:
-    name: "{{ apt_packages }}"
-    state: latest
+- name: Apt | Upgrade packages
+  ansible.builtin.apt:
+    upgrade: "{{ apt_upgrade_type }}"
+    update_cache: true
+  when: do_upgrade | bool
 
+- name: Apt | Install base and extra packages
+  ansible.builtin.apt:
+    name: "{{ (apt_packages + apt_packages_extra) | unique }}"
+    state: present
+    update_cache: true
+    cache_valid_time: "{{ apt_cache_valid_time }}"
+  when: (apt_packages + apt_packages_extra) | length > 0

@@ -1,35 +1,63 @@
 ---
-- include_tasks: apt_repos.yml
-  when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
+- name: Setup APT repositories
+  ansible.builtin.import_tasks: apt_repos.yml
+  when: ansible_facts['os_family'] == 'Debian'
   tags:
     - repos
+    - apt_repos
 
-- include_tasks: yum_repos.yml
-  when: ansible_distribution == 'CentOS' or ansible_distribution == 'RedHat'
+- name: Setup YUM/DNF repositories
+  ansible.builtin.import_tasks: yum_repos.yml
+  when: ansible_facts['os_family'] == 'RedHat'
   tags:
     - repos
+    - yum_repos
 
-- include_tasks: apt.yml
-  when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
+- name: Manage APT packages
+  ansible.builtin.import_tasks: apt.yml
+  when: ansible_facts['os_family'] == 'Debian'
   tags:
     - apt
     - pkg
 
-- include_tasks: yum.yml
-  when: ansible_distribution == 'CentOS' or ansible_distribution == 'RedHat'
+- name: Manage YUM/DNF packages
+  ansible.builtin.import_tasks: yum.yml
+  when: ansible_facts['os_family'] == 'RedHat'
   tags:
     - yum
+    - dnf
     - pkg
 
-- include_tasks: limits.yml
+- name: Configure timezone and NTP
+  ansible.builtin.import_tasks: time.yml
+  tags:
+    - time
+    - timezone
+    - ntp
+
+- name: Configure systemd-journald
+  ansible.builtin.import_tasks: journald.yml
+  tags:
+    - journald
+    - logging
+
+- name: Configure system ulimits and systemd limits
+  ansible.builtin.import_tasks: limits.yml
   tags:
     - ulimit
+    - limits
 
-- include_tasks: locales.yml
-  when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
+- name: Configure sysctl parameters
+  ansible.builtin.import_tasks: sysctl.yml
+  tags:
+    - sysctl
+
+- name: Configure system locales
+  ansible.builtin.import_tasks: locales.yml
   tags:
     - locales
 
-- include_tasks: profile.yml
+- name: Configure root bash profile
+  ansible.builtin.import_tasks: profile.yml
   tags:
     - profile

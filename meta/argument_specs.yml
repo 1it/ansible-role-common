@@ -1,0 +1,153 @@
+---
+argument_specs:
+  main:
+    short_description: Common baseline configuration for SaaS/Web Linux servers
+    options:
+      do_upgrade:
+        type: bool
+        default: false
+        description: Upgrade installed system packages when true.
+      apt_upgrade_type:
+        type: str
+        default: safe
+        choices:
+          - "yes"
+          - safe
+          - full
+          - dist
+        description: Upgrade mode passed to ansible.builtin.apt when do_upgrade is true.
+      apt_cache_valid_time:
+        type: int
+        default: 3600
+        description: APT cache validity window in seconds.
+      manage_apt_sources:
+        type: bool
+        default: false
+        description: Manage /etc/apt/sources.list (and remove duplicate DEB822 default sources).
+      apt_debian_mirror:
+        type: str
+        default: "https://deb.debian.org/debian"
+        description: Debian mirror base URL used when manage_apt_sources is true.
+      apt_debian_security_mirror:
+        type: str
+        default: "https://deb.debian.org/debian-security"
+        description: Debian security mirror base URL used when manage_apt_sources is true.
+      apt_ubuntu_mirror:
+        type: str
+        default: ""
+        description: Ubuntu mirror base URL (empty auto-selects archive.ubuntu.com or ports.ubuntu.com by architecture).
+      apt_ubuntu_security_mirror:
+        type: str
+        default: ""
+        description: Ubuntu security mirror base URL (empty auto-selects security.ubuntu.com or ports.ubuntu.com by architecture).
+      apt_include_deb_src:
+        type: bool
+        default: false
+        description: Include deb-src lines in managed APT sources.list templates.
+      manage_timezone:
+        type: bool
+        default: true
+        description: Configure the system timezone.
+      timezone:
+        type: str
+        default: UTC
+        description: System timezone name (e.g. UTC).
+      manage_ntp:
+        type: bool
+        default: true
+        description: Install and enable chrony NTP synchronization.
+      manage_journald:
+        type: bool
+        default: true
+        description: Configure systemd-journald disk retention drop-in.
+      journald_config:
+        type: dict
+        description: Key-value settings written under [Journal] in /etc/systemd/journald.conf.d/99-common.conf.
+      locales:
+        type: list
+        elements: str
+        description: Locales to generate on Debian/Ubuntu systems.
+      default_locale:
+        type: str
+        default: en_US.UTF-8
+        description: Default system LANG written to /etc/default/locale or /etc/locale.conf.
+      yum_locale_packages:
+        type: list
+        elements: str
+        description: Glibc language pack packages installed on EL/RedHat systems.
+      system_limits:
+        type: dict
+        description: PAM limits.d configuration dictionary containing ulimits list.
+        options:
+          ulimits:
+            type: list
+            elements: str
+            description: Lines written to /etc/security/limits.d/99-common.conf.
+      manage_systemd_limits:
+        type: bool
+        default: true
+        description: Manage /etc/systemd/system.conf.d/99-common-limits.conf for systemd services.
+      systemd_default_limit_nofile:
+        type: str
+        default: "65536:524288"
+        description: Value for systemd DefaultLimitNOFILE (soft:hard).
+      systemd_default_limit_nproc:
+        type: str
+        default: ""
+        description: Optional value for systemd DefaultLimitNPROC.
+      sysctl_file:
+        type: str
+        default: /etc/sysctl.d/99-common.conf
+        description: Target file under /etc/sysctl.d/ for managed sysctl parameters.
+      sysctl_enable_bbr:
+        type: bool
+        default: true
+        description: Enable fq qdisc and BBR TCP congestion control when supported by the kernel.
+      sysctl_params:
+        type: list
+        elements: dict
+        description: Base list of sysctl parameter definitions (key, value, optional state).
+      sysctl_extra_params:
+        type: list
+        elements: dict
+        description: Additional or overriding sysctl parameter definitions merged after sysctl_params.
+      apt_packages:
+        type: list
+        elements: str
+        description: Base APT packages to install on Debian/Ubuntu hosts.
+      apt_packages_extra:
+        type: list
+        elements: str
+        description: Extra APT packages appended to apt_packages.
+      yum_packages:
+        type: list
+        elements: str
+        description: Base DNF/YUM packages to install on EL/RedHat hosts.
+      yum_packages_extra:
+        type: list
+        elements: str
+        description: Extra DNF/YUM packages appended to yum_packages.
+      apt_repos_list:
+        type: list
+        elements: dict
+        description: Custom APT repositories and optional signing keys.
+      yum_enable_epel:
+        type: bool
+        default: true
+        description: Enable EPEL repository on EL/RedHat hosts.
+      yum_rpm_keys:
+        type: list
+        elements: str
+        description: Custom RPM GPG key URLs or paths to import.
+      yum_repos_list:
+        type: list
+        elements: str
+        description: Custom repository RPM packages or URLs to install via dnf.
+      yum_repositories:
+        type: list
+        elements: dict
+        description: Declarative yum_repository definitions.
+      manage_root_profile:
+        type: bool
+        default: false
+        description: Manage /root/.bashrc from template when true.

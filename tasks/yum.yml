@@ -1,6 +1,14 @@
 ---
-- name: Common | Make sure some basic tools are installed | See list in defalts
-  yum:
-    name: {{ item }}
-  with_items:
-    - "{{ yum_packages }}"
+- name: Yum | Upgrade all packages
+  ansible.builtin.dnf:
+    name: "*"
+    state: latest
+    update_cache: true
+  when: do_upgrade | bool
+
+- name: Yum | Install base and extra packages
+  ansible.builtin.dnf:
+    name: "{{ (yum_packages + yum_packages_extra) | unique }}"
+    state: present
+    allowerasing: true
+  when: (yum_packages + yum_packages_extra) | length > 0

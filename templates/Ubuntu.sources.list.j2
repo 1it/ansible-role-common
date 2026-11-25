@@ -1,6 +1,19 @@
-###### Ubuntu Main Repos
-deb mirror://mirrors.ubuntu.com/mirrors.txt {{ ansible_distribution_release }} main restricted universe multiverse
+{% set is_ports_arch = ansible_facts['architecture'] not in ['x86_64', 'amd64', 'i386', 'i686'] %}
+{% set ubuntu_mirror = apt_ubuntu_mirror if (apt_ubuntu_mirror | length > 0) else ('http://ports.ubuntu.com/ubuntu-ports' if is_ports_arch else 'http://archive.ubuntu.com/ubuntu') %}
+{% set ubuntu_security_mirror = apt_ubuntu_security_mirror if (apt_ubuntu_security_mirror | length > 0) else ('http://ports.ubuntu.com/ubuntu-ports' if is_ports_arch else 'http://security.ubuntu.com/ubuntu') %}
+# Managed by Ansible (common role)
+# Ubuntu Main Repos
+deb {{ ubuntu_mirror }} {{ ansible_facts['distribution_release'] }} main restricted universe multiverse
+{% if apt_include_deb_src | bool %}
+deb-src {{ ubuntu_mirror }} {{ ansible_facts['distribution_release'] }} main restricted universe multiverse
+{% endif %}
 
-###### Ubuntu Update Repos
-deb mirror://mirrors.ubuntu.com/mirrors.txt {{ ansible_distribution_release }}-security main restricted universe multiverse
-deb mirror://mirrors.ubuntu.com/mirrors.txt {{ ansible_distribution_release }}-updates main restricted universe multiverse
+# Ubuntu Update & Security Repos
+deb {{ ubuntu_security_mirror }} {{ ansible_facts['distribution_release'] }}-security main restricted universe multiverse
+deb {{ ubuntu_mirror }} {{ ansible_facts['distribution_release'] }}-updates main restricted universe multiverse
+deb {{ ubuntu_mirror }} {{ ansible_facts['distribution_release'] }}-backports main restricted universe multiverse
+{% if apt_include_deb_src | bool %}
+deb-src {{ ubuntu_security_mirror }} {{ ansible_facts['distribution_release'] }}-security main restricted universe multiverse
+deb-src {{ ubuntu_mirror }} {{ ansible_facts['distribution_release'] }}-updates main restricted universe multiverse
+deb-src {{ ubuntu_mirror }} {{ ansible_facts['distribution_release'] }}-backports main restricted universe multiverse
+{% endif %}

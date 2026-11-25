@@ -1,0 +1,8 @@
+# Managed by Ansible (common role)
+[Manager]
+{% if systemd_default_limit_nofile | length > 0 %}
+DefaultLimitNOFILE={{ systemd_default_limit_nofile }}
+{% endif %}
+{% if systemd_default_limit_nproc | length > 0 %}
+DefaultLimitNPROC={{ systemd_default_limit_nproc }}
+{% endif %}
