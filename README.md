@@ -1,60 +1,88 @@
 # Ansible role common
-Ansible Role for common servers setup tasks
+Ansible role for baseline server setup and high-load tuning on Debian (12 Bookworm, 13 Trixie), Ubuntu (24.04 Noble, 26.04 Resolute), and RHEL-family (RHEL, Rocky, AlmaLinux, CentOS EL 8/9/10) distributions.
 
 ## Requirements
-Ansible version => 2.9
+- Ansible >= 2.12
+- Collections:
+  - `ansible.posix` (`sysctl`)
+  - `community.general` (`locale_gen`, `timezone`, `modprobe`)
 
-## Role tags:
-  - apt - apt-packages setup/update 
-  - (apt|yum)repos - set common system repos
-  - locales - set default system locales
-  - yum - yum-packages setup/update
-  - ulimit - set system limits (e.g. open files limit)
-  - profile - copy bashrc file for root
+## Role tags
+- `repos`, `apt_repos`, `yum_repos` - configure system and custom package repositories
+- `pkg`, `apt`, `yum`, `dnf` - install base + extra packages (and optionally upgrade packages when `do_upgrade: true`)
+- `time`, `timezone`, `ntp` - set system timezone (`UTC`) and enable `chrony` NTP sync
+- `journald`, `logging` - cap `systemd-journald` disk usage and retention
+- `ulimit`, `limits` - configure PAM limits (`/etc/security/limits.d/99-common.conf`) and systemd service defaults (`/etc/systemd/system.conf.d/99-common-limits.conf`)
+- `sysctl` - configure kernel sysctl parameters in `/etc/sysctl.d/99-common.conf` (with automatic BBR detection)
+- `locales` - generate and set default system locale (`LANG`) on Debian/Ubuntu and EL/RedHat
+- `profile` - optionally manage `/root/.bashrc` when `manage_root_profile: true`
 
-# Vars
-## Default role variables
+## Key defaults
+See `defaults/main.yml` for the full list of variables and packages:
 ```yaml
-do_upgrade: False
+do_upgrade: false
+apt_upgrade_type: safe
+manage_apt_sources: false
+
+manage_timezone: true
+timezone: "UTC"
+manage_ntp: true
+
+manage_journald: true
+journald_config:
+  SystemMaxUse: "1G"
+  SystemKeepFree: "2G"
+  MaxRetentionSec: "1month"
+  Compress: "yes"
 
 locales:
-    - en_US.UTF-8
+  - en_US.UTF-8
+default_locale: "en_US.UTF-8"
 
 system_limits:
   ulimits:
-    - 'root soft nofile 65536'
-    - 'root hard nofile 65536'
-    - '* soft nofile 65536'
-    - '* hard nofile 65536'
+    - "root soft nofile 65536"
+    - "root hard nofile 524288"
+    - "* soft nofile 65536"
+    - "* hard nofile 524288"
 
-apt_packages:
-    - bash-completion
-    - curl
-    - git
-    - tig
-    - htop
-    - vim-nox
+manage_systemd_limits: true
+systemd_default_limit_nofile: "65536:524288"
+
+sysctl_file: "/etc/sysctl.d/99-common.conf"
+sysctl_enable_bbr: true
+sysctl_extra_params: []
+
+apt_packages_extra: []
+yum_packages_extra: []
+manage_root_profile: false
 ```
+
 ## Example Playbook
 ```yaml
 ---
 - hosts: all
+  become: true
   roles:
     - common
   vars:
     apt_repos_list:
-      - repo: "deb [arch=amd64] https://apt.releases.hashicorp.com {{ ansible_distribution_release }} main"
+      - repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/hashicorp.asc] https://apt.releases.hashicorp.com {{ ansible_facts['distribution_release'] }} main"
         key: "https://apt.releases.hashicorp.com/gpg"
-      - repo: deb [signed-by=/etc/apt/trusted.gpg.d/kubernetes-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main
-        key: https://packages.cloud.google.com/apt/doc/apt-key.gpg
-        keyring: /etc/apt/trusted.gpg.d/kubernetes-keyring.gpg
+        keyring: "/etc/apt/keyrings/hashicorp.asc"
 
-    apt_packages:
-      - nomad
-      - consul
-      - kubectl
+    # Append or override individual sysctl parameters without replacing defaults
+    sysctl_extra_params:
+      - key: vm.swappiness
+        value: 1
+
+    # Add project-specific packages while keeping base server tools
+    apt_packages_extra:
+      - nginx
+      - redis-tools
 ```
-# Playbook run
-```
-ansible-playbook playbooks/common.yml --skip-tags ulimit,profile
+
+## Playbook run
+```bash
+ansible-playbook playbooks/common.yml --skip-tags limits,profile
 ```

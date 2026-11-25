@@ -1,5 +1,9 @@
 ---
-- name: Profile | Set the ~/.bashrc file for root 
-  copy:
-    src: bashrc
+- name: Profile | Configure /root/.bashrc
+  ansible.builtin.template:
+    src: bashrc.j2
     dest: /root/.bashrc
+    owner: root
+    group: root
+    mode: "0644"
+  when: manage_root_profile | bool

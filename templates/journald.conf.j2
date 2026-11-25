@@ -1,0 +1,5 @@
+# Managed by Ansible (common role)
+[Journal]
+{% for key, value in journald_config.items() %}
+{{ key }}={{ value }}
+{% endfor %}

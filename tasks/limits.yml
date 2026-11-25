@@ -1,8 +1,36 @@
 ---
-- name: Limits | Set the system-wide limits (ulimit)
-  template:
+- name: Limits | Set PAM system-wide limits (/etc/security/limits.d/99-common.conf)
+  ansible.builtin.template:
     src: ulimits.conf.j2
-    dest: /etc/security/limits.d/limits.conf
+    dest: /etc/security/limits.d/99-common.conf
     owner: root
     group: root
-    mode: 0644
+    mode: "0644"
+
+- name: Limits | Remove legacy limits.conf that would sort after 99-common.conf
+  ansible.builtin.file:
+    path: /etc/security/limits.d/limits.conf
+    state: absent
+
+- name: Limits | Ensure systemd system.conf.d directory exists
+  ansible.builtin.file:
+    path: /etc/systemd/system.conf.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when:
+    - manage_systemd_limits | bool
+    - ansible_facts['service_mgr'] == 'systemd'
+
+- name: Limits | Configure systemd default service limits
+  ansible.builtin.template:
+    src: systemd-limits.conf.j2
+    dest: /etc/systemd/system.conf.d/99-common-limits.conf
+    owner: root
+    group: root
+    mode: "0644"
+  when:
+    - manage_systemd_limits | bool
+    - ansible_facts['service_mgr'] == 'systemd'
+  notify: Reload systemd daemon

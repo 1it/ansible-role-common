@@ -1,8 +1,33 @@
-# Debian global mirror CDN
-deb     http://deb.debian.org/debian/ {{ ansible_distribution_release }} main non-free contrib
-deb-src http://deb.debian.org/debian/ {{ ansible_distribution_release }} main non-free contrib
+{% set major = ansible_facts['distribution_major_version'] | int %}
+{% set debian_components = 'main contrib non-free' ~ (' non-free-firmware' if (major >= 12) else '') %}
+# Managed by Ansible (common role)
+# Debian mirror
+deb     {{ apt_debian_mirror }} {{ ansible_facts['distribution_release'] }} {{ debian_components }}
+{% if apt_include_deb_src | bool %}
+deb-src {{ apt_debian_mirror }} {{ ansible_facts['distribution_release'] }} {{ debian_components }}
+{% endif %}
 
-# {{ ansible_distribution_release }} backports
-deb http://deb.debian.org/debian/ {{ ansible_distribution_release }}-backports main non-free contrib
-deb-src http://deb.debian.org/debian/ {{ ansible_distribution_release }}-backports main non-free contrib
+# {{ ansible_facts['distribution_release'] }} security
+{% if major <= 10 %}
+deb     {{ apt_debian_security_mirror }} {{ ansible_facts['distribution_release'] }}/updates {{ debian_components }}
+{% if apt_include_deb_src | bool %}
+deb-src {{ apt_debian_security_mirror }} {{ ansible_facts['distribution_release'] }}/updates {{ debian_components }}
+{% endif %}
+{% else %}
+deb     {{ apt_debian_security_mirror }} {{ ansible_facts['distribution_release'] }}-security {{ debian_components }}
+{% if apt_include_deb_src | bool %}
+deb-src {{ apt_debian_security_mirror }} {{ ansible_facts['distribution_release'] }}-security {{ debian_components }}
+{% endif %}
+{% endif %}
 
+# {{ ansible_facts['distribution_release'] }} updates
+deb     {{ apt_debian_mirror }} {{ ansible_facts['distribution_release'] }}-updates {{ debian_components }}
+{% if apt_include_deb_src | bool %}
+deb-src {{ apt_debian_mirror }} {{ ansible_facts['distribution_release'] }}-updates {{ debian_components }}
+{% endif %}
+
+# {{ ansible_facts['distribution_release'] }} backports
+deb     {{ apt_debian_mirror }} {{ ansible_facts['distribution_release'] }}-backports {{ debian_components }}
+{% if apt_include_deb_src | bool %}
+deb-src {{ apt_debian_mirror }} {{ ansible_facts['distribution_release'] }}-backports {{ debian_components }}
+{% endif %}

@@ -1,7 +1,49 @@
 ---
-- name: Locales | Set the system locales
-  locale_gen:
+- name: Locales | Ensure locales package is installed (Debian/Ubuntu)
+  ansible.builtin.apt:
+    name: locales
+    state: present
+    update_cache: true
+    cache_valid_time: "{{ apt_cache_valid_time }}"
+  when: ansible_facts['os_family'] == 'Debian'
+
+- name: Locales | Generate system locales (Debian/Ubuntu)
+  community.general.locale_gen:
     name: "{{ item }}"
     state: present
-  with_items:
-    - "{{ locales }}"
+  loop: "{{ locales }}"
+  when: ansible_facts['os_family'] == 'Debian'
+
+- name: Locales | Set default system locale (Debian/Ubuntu)
+  ansible.builtin.lineinfile:
+    path: /etc/default/locale
+    regexp: '^LANG='
+    line: "LANG={{ default_locale }}"
+    create: true
+    owner: root
+    group: root
+    mode: "0644"
+  when:
+    - ansible_facts['os_family'] == 'Debian'
+    - default_locale | length > 0
+
+- name: Locales | Install glibc language packs (EL/RedHat)
+  ansible.builtin.dnf:
+    name: "{{ yum_locale_packages }}"
+    state: present
+  when:
+    - ansible_facts['os_family'] == 'RedHat'
+    - yum_locale_packages | length > 0
+
+- name: Locales | Set default system locale (EL/RedHat)
+  ansible.builtin.lineinfile:
+    path: /etc/locale.conf
+    regexp: '^LANG='
+    line: "LANG={{ default_locale }}"
+    create: true
+    owner: root
+    group: root
+    mode: "0644"
+  when:
+    - ansible_facts['os_family'] == 'RedHat'
+    - default_locale | length > 0

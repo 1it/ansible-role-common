@@ -1,24 +1,60 @@
 ---
-- name: Yum | Copy .repo files
-  copy: 
+- name: Yum | Copy .repo files from role files directory
+  ansible.builtin.copy:
     src: "{{ item }}"
     dest: /etc/yum.repos.d/
+    owner: root
+    group: root
+    mode: "0644"
   with_fileglob:
-    - '*.repo'
+    - "*.repo"
 
-- name: Yum | Setup rpm keys
-  rpm_key:
+- name: Yum | Install EPEL release from distro extras repository (EL clones)
+  ansible.builtin.dnf:
+    name: epel-release
+    state: present
+  when:
+    - yum_enable_epel | bool
+    - ansible_facts['distribution'] != 'RedHat'
+
+- name: Yum | Import EPEL GPG key (RHEL)
+  ansible.builtin.rpm_key:
+    state: present
+    key: "https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-{{ ansible_facts['distribution_major_version'] }}"
+  when:
+    - yum_enable_epel | bool
+    - ansible_facts['distribution'] == 'RedHat'
+
+- name: Yum | Install EPEL release RPM (RHEL)
+  ansible.builtin.dnf:
+    name: "https://dl.fedoraproject.org/pub/epel/epel-release-latest-{{ ansible_facts['distribution_major_version'] }}.noarch.rpm"
+    state: present
+  when:
+    - yum_enable_epel | bool
+    - ansible_facts['distribution'] == 'RedHat'
+
+- name: Yum | Import custom RPM GPG keys
+  ansible.builtin.rpm_key:
     state: present
     key: "{{ item }}"
-  with_items:
-    - "{{ yum_rpm_keys }}"
+  loop: "{{ yum_rpm_keys }}"
 
-- name: Yum | Add repository
-  yum:
-    name: "{{ item }}"
+- name: Yum | Configure declarative YUM/DNF repositories
+  ansible.builtin.yum_repository:
+    name: "{{ item.name }}"
+    description: "{{ item.description | default(item.name) }}"
+    baseurl: "{{ item.baseurl | default(omit) }}"
+    metalink: "{{ item.metalink | default(omit) }}"
+    mirrorlist: "{{ item.mirrorlist | default(omit) }}"
+    enabled: "{{ item.enabled | default(true) }}"
+    gpgcheck: "{{ item.gpgcheck | default(true) }}"
+    gpgkey: "{{ item.gpgkey | default(omit) }}"
+    state: "{{ item.state | default('present') }}"
+  loop: "{{ yum_repositories }}"
+
+- name: Yum | Install custom repository RPMs
+  ansible.builtin.dnf:
+    name: "{{ yum_repos_list }}"
     state: present
-    validate_certs: False
-    update_cache: yes
-  with_items:
-    - "{{ yum_repos_list }}"
-
+    update_cache: true
+  when: yum_repos_list | length > 0
