@@ -22,20 +22,47 @@
 
 - name: Apt | Remove duplicate default DEB822 sources file when /etc/apt/sources.list is managed
   ansible.builtin.file:
-    path: "/etc/apt/sources.list.d/{{ ansible_facts['distribution'] | lower }}.sources"
+    path: "/etc/apt/sources.list.d/{{ _common_default_sources_name }}.sources"
     state: absent
+  vars:
+    _common_default_sources_name: "{{ ansible_facts['distribution'] | lower }}"
+    _common_active_deb822_slugs: >-
+      {{
+        apt_repositories
+        | zip(apt_repositories | map(attribute='state', default='present'))
+        | selectattr(1, 'equalto', 'present')
+        | map(attribute=0)
+        | map(attribute='name')
+        | map('lower')
+        | map('regex_replace', '[_\s]+', '-')
+        | map('regex_replace', '[^a-z0-9-]+', '')
+        | list
+      }}
   when:
     - manage_apt_sources | bool
     - ansible_facts['distribution'] in ['Debian', 'Ubuntu']
+    - _common_default_sources_name not in _common_active_deb822_slugs
   notify: Update apt cache
 
 - name: Apt | Remove legacy security.list when Debian sources are managed in /etc/apt/sources.list
   ansible.builtin.file:
     path: /etc/apt/sources.list.d/security.list
     state: absent
+  vars:
+    _common_active_legacy_filenames: >-
+      {{
+        apt_repos_list
+        | zip(apt_repos_list | map(attribute='state', default='present'))
+        | selectattr(1, 'equalto', 'present')
+        | map(attribute=0)
+        | map(attribute='filename', default='')
+        | map('regex_replace', '\.list$', '')
+        | list
+      }}
   when:
     - manage_apt_sources | bool
     - ansible_facts['distribution'] == 'Debian'
+    - "'security' not in _common_active_legacy_filenames"
   notify: Update apt cache
 
 # In check mode on a host without python3-debian (or ca-certificates for HTTPS
@@ -72,7 +99,8 @@
           | map(attribute='repo')
           | map('regex_replace', '\[[^\]]+\]', '')
           | map('regex_replace', '^\s*deb(-src)?\s+', '')
-          | map('regex_replace', '^\w+://([^@\s]+@)?', '')
+          | map('regex_replace', '\w+://', '')
+          | map('regex_replace', '^[^@\s]+@', '')
           | map('regex_replace', '\s+.*$', '')
           | map('regex_replace', '[^a-zA-Z0-9]+', '_')
           | map('regex_replace', '^_+|_+$', '')

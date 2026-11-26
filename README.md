@@ -58,6 +58,11 @@ yum_packages_extra: []
 manage_root_profile: false
 ```
 
+## Custom APT Repositories
+Prefer `apt_repositories` (DEB822 `.sources` via `ansible.builtin.deb822_repository`), which scopes `signed_by` per repository and cleans up both `.sources` and keyring files on `state: absent`.
+
+Legacy one-line entries in `apt_repos_list` remain supported and are written to `/etc/apt/sources.list.d/*.list` (set explicit `keyring` + `signed-by=` rather than omitting `keyring`, which drops the key into `/etc/apt/trusted.gpg.d/` for all sources; `ppa:` shortcuts are not expanded and `state: absent` removes only the `.list` file).
+
 ## Example Playbook
 ```yaml
 ---
