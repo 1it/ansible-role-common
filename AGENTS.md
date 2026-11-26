@@ -3,11 +3,11 @@
 Instructions for coding agents working on this standalone Ansible role (`common`). See `README.md` and `defaults/main.yml` for user-facing docs and full defaults.
 
 ## Targets & Requirements
-- **Ansible:** `>= 2.12` (tested on `ansible-core` 2.22). Collections: `ansible.posix`, `community.general`.
+- **Ansible:** `>= 2.15` (tested on `ansible-core` 2.22). Collections: `ansible.posix`, `community.general`.
 - **Platforms:** Debian 12/13, Ubuntu 24.04/26.04 (`amd64` + `arm64`), EL 8/9/10 (Rocky, AlmaLinux, RHEL, CentOS Stream).
 
 ## Code Style & Conventions
-- **FQCNs only:** Always use `ansible.builtin.*`, `ansible.posix.*`, `community.general.*`. Stick to modules available in Ansible 2.12+ (e.g., use `ansible.builtin.systemd`, not `systemd_service`).
+- **FQCNs only:** Always use `ansible.builtin.*`, `ansible.posix.*`, `community.general.*`. Stick to modules available in Ansible 2.15+ (e.g., use `ansible.builtin.systemd`, not `systemd_service`; use `ansible.builtin.deb822_repository`, never deprecated `apt_repository`).
 - **Facts access:** Always use `ansible_facts['...']` (never top-level `ansible_*` variables).
 - **File permissions:** Always specify `owner: root`, `group: root`, and quoted `mode: "0644"` / `"0755"` on `template`, `copy`, `file`, `lineinfile`, and `get_url`.
 - **Jinja2 native types:** Never mix `{% set %}` statements with `{{ ... }}` inside `set_fact` when producing lists/dicts (Ansible >= 2.19 returns a string). Use single `{{ ... }}` expressions with task-level `vars:`.
@@ -21,7 +21,7 @@ Instructions for coding agents working on this standalone Ansible role (`common`
 - **Debian 13+ / Ubuntu 26.04+ `sysctl`:** Never write to `/etc/sysctl.conf` (ignored by `systemd-sysctl`). Always target `/etc/sysctl.d/*.conf` (`sysctl_file`).
 - **Systemd limits:** `systemd` ignores `/etc/security/limits.d/*`. Keep both `/etc/security/limits.d/99-common.conf` (and cleanup of legacy `limits.conf`, which sorts after `99-*`) and `/etc/systemd/system.conf.d/99-common-limits.conf` in sync.
 - **Ubuntu ARM64 mirrors:** Both main and `<release>-security` suites are served from `http://ports.ubuntu.com/ubuntu-ports` (`ubuntu-ports-security` does **not** exist — returns 404).
-- **Debian APT bootstrap:** Keep Debian security repos inside `templates/Debian.sources.list.j2` (do not use `apt_repository`, which fails on fresh Debian 13 without `gnupg`/`apt-key`). Install `ca-certificates` (plus `gnupg` and `python3-apt` when `apt_repos_list` is non-empty) before modifying sources. Use real package names (`bind9-dnsutils`, not virtual `dnsutils`).
+- **Debian APT bootstrap:** Keep Debian security repos inside `templates/Debian.sources.list.j2` and never use deprecated `ansible.builtin.apt_repository`. Use `ansible.builtin.deb822_repository` for `apt_repositories` (installing `ca-certificates` and `python3-debian`, and guarding check mode when prereqs change) and `copy`/`file` under `/etc/apt/sources.list.d/*.list` for legacy `apt_repos_list`. Use real package names (`bind9-dnsutils`, not virtual `dnsutils`).
 - **EL minimal images:** Keep `allowerasing: true` in `tasks/yum.yml` so `curl` cleanly replaces preinstalled `curl-minimal` on minimal EL 9 images. Install `epel-release` from built-in `extras` on EL clones (`distribution != 'RedHat'`) and via GPG key + RPM URL only on `RedHat`.
 - **BBR safety:** Always guard `net.core.default_qdisc=fq` and `net.ipv4.tcp_congestion_control=bbr` behind `/proc/sys/net/ipv4/tcp_available_congestion_control` detection so containers/restricted kernels do not fail.
 

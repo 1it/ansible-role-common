@@ -3,13 +3,14 @@
   ansible.builtin.apt:
     name: >-
       {{
-        (['ca-certificates'] if (manage_apt_sources | bool or apt_repos_list | length > 0) else [])
-        + (['gnupg', 'python3-apt'] if (apt_repos_list | length > 0) else [])
+        (['ca-certificates'] if (manage_apt_sources | bool or apt_repositories | length > 0 or apt_repos_list | length > 0) else [])
+        + (['python3-debian'] if (apt_repositories | length > 0) else [])
       }}
     state: present
     update_cache: true
     cache_valid_time: "{{ apt_cache_valid_time }}"
-  when: (manage_apt_sources | bool) or (apt_repos_list | length > 0)
+  register: _common_apt_repo_prereqs
+  when: (manage_apt_sources | bool) or (apt_repositories | length > 0) or (apt_repos_list | length > 0)
 
 - name: Apt | Update the sources list (/etc/apt/sources.list)
   ansible.builtin.template:
@@ -41,13 +42,35 @@
     - ansible_facts['distribution'] == 'Debian'
   notify: Update apt cache
 
-- name: Apt | Ensure APT keyring directories exist
+# In check mode on a host without python3-debian (or ca-certificates for HTTPS
+# signed_by keys), deb822_repository fails before making changes.
+- name: Apt | Configure DEB822 APT repositories
+  ansible.builtin.deb822_repository:
+    name: "{{ item.name }}"
+    types: "{{ item.types | default(omit) }}"
+    uris: "{{ item.uris | default(omit) }}"
+    suites: "{{ item.suites | default(omit) }}"
+    components: "{{ item.components | default(omit) }}"
+    architectures: "{{ item.architectures | default(omit) }}"
+    signed_by: "{{ item.signed_by | default(omit) }}"
+    enabled: "{{ item.enabled | default(omit) }}"
+    trusted: "{{ item.trusted | default(omit) }}"
+    mode: "{{ item.mode | default('0644') }}"
+    state: "{{ item.state | default('present') }}"
+  loop: "{{ apt_repositories }}"
+  when:
+    - apt_repositories | length > 0
+    - not (ansible_check_mode and _common_apt_repo_prereqs is changed)
+  notify: Update apt cache
+
+- name: Apt | Ensure APT keyring directories exist (legacy apt_repos_list)
   ansible.builtin.file:
     path: "{{ item }}"
     state: directory
     owner: root
     group: root
     mode: "0755"
+  register: _common_apt_keyring_dirs
   loop: >-
     {{
       (['/etc/apt/keyrings'] + (
@@ -60,7 +83,7 @@
     }}
   when: apt_repos_list | length > 0
 
-- name: Apt | Download APT signing keys
+- name: Apt | Download APT signing keys (legacy apt_repos_list)
   ansible.builtin.get_url:
     url: "{{ item.key }}"
     dest: >-
@@ -79,15 +102,46 @@
   when:
     - item.key is defined
     - (item.state | default('present')) == 'present'
+    - not (ansible_check_mode and (_common_apt_repo_prereqs is changed or _common_apt_keyring_dirs is changed))
   notify: Update apt cache
 
-- name: Apt | Add APT repositories
-  ansible.builtin.apt_repository:
-    repo: "{{ item.repo }}"
-    filename: "{{ item.filename | default(omit) }}"
-    state: "{{ item.state | default('present') }}"
-    update_cache: false
+- name: Apt | Write legacy APT repository .list files
+  ansible.builtin.copy:
+    content: "{{ item.repo | trim }}\n"
+    dest: >-
+      /etc/apt/sources.list.d/{{
+        (item.filename | regex_replace('\.list$', ''))
+        if (item.filename is defined and item.filename | length > 0)
+        else (
+          item.repo
+          | regex_replace('^deb(-src)?\s+(\[[^\]]*\]\s+)?https?://', '')
+          | regex_replace('[^a-zA-Z0-9_-]+', '_')
+          | regex_replace('^_+|_+$', '')
+        )
+      }}.list
+    owner: root
+    group: root
+    mode: "0644"
   loop: "{{ apt_repos_list }}"
+  when: (item.state | default('present')) == 'present'
+  notify: Update apt cache
+
+- name: Apt | Remove legacy APT repository .list files
+  ansible.builtin.file:
+    path: >-
+      /etc/apt/sources.list.d/{{
+        (item.filename | regex_replace('\.list$', ''))
+        if (item.filename is defined and item.filename | length > 0)
+        else (
+          item.repo
+          | regex_replace('^deb(-src)?\s+(\[[^\]]*\]\s+)?https?://', '')
+          | regex_replace('[^a-zA-Z0-9_-]+', '_')
+          | regex_replace('^_+|_+$', '')
+        )
+      }}.list
+    state: absent
+  loop: "{{ apt_repos_list }}"
+  when: (item.state | default('present')) == 'absent'
   notify: Update apt cache
 
 - name: Apt | Flush handlers to update apt cache if repositories changed

@@ -2,7 +2,7 @@
 Ansible role for baseline server setup and high-load tuning on Debian (12 Bookworm, 13 Trixie), Ubuntu (24.04 Noble, 26.04 Resolute), and RHEL-family (RHEL, Rocky, AlmaLinux, CentOS EL 8/9/10) distributions.
 
 ## Requirements
-- Ansible >= 2.12
+- Ansible >= 2.15
 - Collections:
   - `ansible.posix` (`sysctl`)
   - `community.general` (`locale_gen`, `timezone`, `modprobe`)
@@ -66,10 +66,14 @@ manage_root_profile: false
   roles:
     - common
   vars:
-    apt_repos_list:
-      - repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/hashicorp.asc] https://apt.releases.hashicorp.com {{ ansible_facts['distribution_release'] }} main"
-        key: "https://apt.releases.hashicorp.com/gpg"
-        keyring: "/etc/apt/keyrings/hashicorp.asc"
+    apt_repositories:
+      - name: hashicorp
+        uris: https://apt.releases.hashicorp.com
+        suites: "{{ ansible_facts['distribution_release'] }}"
+        components:
+          - main
+        architectures: amd64
+        signed_by: https://apt.releases.hashicorp.com/gpg
 
     # Append or override individual sysctl parameters without replacing defaults
     sysctl_extra_params:
