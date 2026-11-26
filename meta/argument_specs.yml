@@ -127,10 +127,14 @@ argument_specs:
         type: list
         elements: str
         description: Extra DNF/YUM packages appended to yum_packages.
+      apt_repositories:
+        type: list
+        elements: dict
+        description: Declarative DEB822 APT repositories managed via ansible.builtin.deb822_repository.
       apt_repos_list:
         type: list
         elements: dict
-        description: Custom APT repositories and optional signing keys.
+        description: Legacy one-line APT repositories written to /etc/apt/sources.list.d/*.list with optional signing keys.
       yum_enable_epel:
         type: bool
         default: true

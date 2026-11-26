@@ -1,15 +1,12 @@
 ---
 - name: Apt | Ensure prerequisites for repository management are installed
   ansible.builtin.apt:
-    name: >-
-      {{
-        (['ca-certificates'] if (manage_apt_sources | bool or apt_repos_list | length > 0) else [])
-        + (['gnupg', 'python3-apt'] if (apt_repos_list | length > 0) else [])
-      }}
+    name: "{{ ['ca-certificates'] + (['python3-debian'] if (apt_repositories | length > 0) else []) }}"
     state: present
     update_cache: true
     cache_valid_time: "{{ apt_cache_valid_time }}"
-  when: (manage_apt_sources | bool) or (apt_repos_list | length > 0)
+  register: _common_apt_repo_prereqs
+  when: (manage_apt_sources | bool) or (apt_repositories | length > 0) or (apt_repos_list | length > 0)
 
 - name: Apt | Update the sources list (/etc/apt/sources.list)
   ansible.builtin.template:
@@ -25,70 +22,179 @@
 
 - name: Apt | Remove duplicate default DEB822 sources file when /etc/apt/sources.list is managed
   ansible.builtin.file:
-    path: "/etc/apt/sources.list.d/{{ ansible_facts['distribution'] | lower }}.sources"
+    path: "/etc/apt/sources.list.d/{{ _common_default_sources_name }}.sources"
     state: absent
+  vars:
+    _common_default_sources_name: "{{ ansible_facts['distribution'] | lower }}"
+    _common_active_deb822_slugs: >-
+      {{
+        apt_repositories
+        | zip(apt_repositories | map(attribute='state', default='present'))
+        | selectattr(1, 'equalto', 'present')
+        | map(attribute=0)
+        | map(attribute='name')
+        | map('lower')
+        | map('regex_replace', '[_\s]+', '-')
+        | map('regex_replace', '[^a-z0-9-]+', '')
+        | list
+      }}
   when:
     - manage_apt_sources | bool
     - ansible_facts['distribution'] in ['Debian', 'Ubuntu']
+    - _common_default_sources_name not in _common_active_deb822_slugs
   notify: Update apt cache
 
 - name: Apt | Remove legacy security.list when Debian sources are managed in /etc/apt/sources.list
   ansible.builtin.file:
     path: /etc/apt/sources.list.d/security.list
     state: absent
+  vars:
+    _common_active_legacy_filenames: >-
+      {{
+        apt_repos_list
+        | zip(apt_repos_list | map(attribute='state', default='present'))
+        | selectattr(1, 'equalto', 'present')
+        | map(attribute=0)
+        | map(attribute='filename', default='')
+        | map('regex_replace', '\.list$', '')
+        | list
+      }}
   when:
     - manage_apt_sources | bool
     - ansible_facts['distribution'] == 'Debian'
+    - "'security' not in _common_active_legacy_filenames"
   notify: Update apt cache
 
-- name: Apt | Ensure APT keyring directories exist
-  ansible.builtin.file:
-    path: "{{ item }}"
-    state: directory
-    owner: root
-    group: root
-    mode: "0755"
-  loop: >-
-    {{
-      (['/etc/apt/keyrings'] + (
-        apt_repos_list
-        | selectattr('keyring', 'defined')
-        | map(attribute='keyring')
-        | map('dirname')
-        | list
-      )) | unique
-    }}
-  when: apt_repos_list | length > 0
-
-- name: Apt | Download APT signing keys
-  ansible.builtin.get_url:
-    url: "{{ item.key }}"
-    dest: >-
-      {{
-        item.keyring
-        | default(
-            '/etc/apt/trusted.gpg.d/'
-            ~ (item.filename | default(item.key | regex_replace('^https?://', '') | regex_replace('[^a-zA-Z0-9_-]', '_')))
-            ~ '.asc'
-          )
-      }}
-    owner: root
-    group: root
-    mode: "0644"
-  loop: "{{ apt_repos_list }}"
-  when:
-    - item.key is defined
-    - (item.state | default('present')) == 'present'
-  notify: Update apt cache
-
-- name: Apt | Add APT repositories
-  ansible.builtin.apt_repository:
-    repo: "{{ item.repo }}"
-    filename: "{{ item.filename | default(omit) }}"
+# In check mode on a host without python3-debian (or ca-certificates for HTTPS
+# signed_by keys), deb822_repository fails before making changes.
+- name: Apt | Configure DEB822 APT repositories
+  ansible.builtin.deb822_repository:
+    name: "{{ item.name }}"
+    types: "{{ item.types | default(omit) }}"
+    uris: "{{ item.uris | default(omit) }}"
+    suites: "{{ item.suites | default(omit) }}"
+    components: "{{ item.components | default(omit) }}"
+    architectures: "{{ item.architectures | default(omit) }}"
+    signed_by: "{{ item.signed_by | default(omit) }}"
+    enabled: "{{ item.enabled | default(omit) }}"
+    trusted: "{{ item.trusted | default(omit) }}"
+    mode: "{{ item.mode | default('0644') }}"
     state: "{{ item.state | default('present') }}"
-    update_cache: false
-  loop: "{{ apt_repos_list }}"
+  loop: "{{ apt_repositories }}"
+  when: not (ansible_check_mode and _common_apt_repo_prereqs is changed)
   notify: Update apt cache
+
+- name: Apt | Manage legacy APT repositories (apt_repos_list)
+  when: apt_repos_list | length > 0
+  vars:
+    _common_apt_repo_files: >-
+      {{
+        (
+          apt_repos_list
+          | map(attribute='filename', default='')
+          | map('regex_replace', '\.list$', '')
+        )
+        | zip(
+          apt_repos_list
+          | map(attribute='repo')
+          | map('regex_replace', '\[[^\]]+\]', '')
+          | map('regex_replace', '^\s*deb(-src)?\s+', '')
+          | map('regex_replace', '\w+://', '')
+          | map('regex_replace', '^[^@\s]+@', '')
+          | map('regex_replace', '\s+.*$', '')
+          | map('regex_replace', '[^a-zA-Z0-9]+', '_')
+          | map('regex_replace', '^_+|_+$', '')
+        )
+        | map('join', '|')
+        | map('regex_replace', '^\|+', '')
+        | map('regex_replace', '\|.*$', '')
+        | list
+      }}
+    _common_apt_repo_entries: >-
+      {{
+        _common_apt_repo_files
+        | zip(
+          apt_repos_list | map(attribute='state', default='present'),
+          apt_repos_list | map(attribute='repo') | map('trim')
+        )
+        | map('list')
+        | list
+      }}
+    _common_apt_repo_present_files: >-
+      {{
+        _common_apt_repo_entries
+        | selectattr(1, 'equalto', 'present')
+        | map(attribute=0)
+        | unique
+        | list
+      }}
+    _common_apt_repo_absent_files: >-
+      {{
+        _common_apt_repo_entries
+        | selectattr(1, 'equalto', 'absent')
+        | map(attribute=0)
+        | unique
+        | difference(_common_apt_repo_present_files)
+        | list
+      }}
+  block:
+    - name: Apt | Ensure APT keyring directories exist (legacy apt_repos_list)
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+      register: _common_apt_keyring_dirs
+      loop: >-
+        {{
+          (['/etc/apt/keyrings'] + (
+            apt_repos_list
+            | selectattr('keyring', 'defined')
+            | map(attribute='keyring')
+            | map('dirname')
+            | list
+          )) | unique
+        }}
+
+    - name: Apt | Download APT signing keys (legacy apt_repos_list)
+      ansible.builtin.get_url:
+        url: "{{ item.key }}"
+        dest: >-
+          {{
+            item.keyring
+            | default(
+                '/etc/apt/trusted.gpg.d/'
+                ~ (item.filename | default(item.key | regex_replace('^https?://', '') | regex_replace('[^a-zA-Z0-9_-]', '_')))
+                ~ '.asc'
+              )
+          }}
+        owner: root
+        group: root
+        mode: "0644"
+      loop: "{{ apt_repos_list }}"
+      when:
+        - item.key is defined
+        - (item.state | default('present')) == 'present'
+        - not (ansible_check_mode and (_common_apt_repo_prereqs is changed or _common_apt_keyring_dirs is changed))
+      notify: Update apt cache
+
+    - name: Apt | Write legacy APT repository .list files
+      ansible.builtin.copy:
+        content: "{{ (_common_apt_repo_entries | selectattr(1, 'equalto', 'present') | selectattr(0, 'equalto', item) | map(attribute=2) | unique | join('\n')) }}\n"
+        dest: "/etc/apt/sources.list.d/{{ item }}.list"
+        owner: root
+        group: root
+        mode: "0644"
+      loop: "{{ _common_apt_repo_present_files }}"
+      notify: Update apt cache
+
+    - name: Apt | Remove legacy APT repository .list files
+      ansible.builtin.file:
+        path: "/etc/apt/sources.list.d/{{ item }}.list"
+        state: absent
+      loop: "{{ _common_apt_repo_absent_files }}"
+      notify: Update apt cache
 
 - name: Apt | Flush handlers to update apt cache if repositories changed
   ansible.builtin.meta: flush_handlers

@@ -2,7 +2,7 @@
 Ansible role for baseline server setup and high-load tuning on Debian (12 Bookworm, 13 Trixie), Ubuntu (24.04 Noble, 26.04 Resolute), and RHEL-family (RHEL, Rocky, AlmaLinux, CentOS EL 8/9/10) distributions.
 
 ## Requirements
-- Ansible >= 2.12
+- Ansible >= 2.15
 - Collections:
   - `ansible.posix` (`sysctl`)
   - `community.general` (`locale_gen`, `timezone`, `modprobe`)
@@ -58,6 +58,11 @@ yum_packages_extra: []
 manage_root_profile: false
 ```
 
+## Custom APT Repositories
+Prefer `apt_repositories` (DEB822 `.sources` via `ansible.builtin.deb822_repository`), which scopes `signed_by` per repository and cleans up both `.sources` and keyring files on `state: absent`.
+
+Legacy one-line entries in `apt_repos_list` remain supported and are written to `/etc/apt/sources.list.d/*.list` (set explicit `keyring` + `signed-by=` rather than omitting `keyring`, which drops the key into `/etc/apt/trusted.gpg.d/` for all sources; `ppa:` shortcuts are not expanded and `state: absent` removes only the `.list` file).
+
 ## Example Playbook
 ```yaml
 ---
@@ -66,10 +71,14 @@ manage_root_profile: false
   roles:
     - common
   vars:
-    apt_repos_list:
-      - repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/hashicorp.asc] https://apt.releases.hashicorp.com {{ ansible_facts['distribution_release'] }} main"
-        key: "https://apt.releases.hashicorp.com/gpg"
-        keyring: "/etc/apt/keyrings/hashicorp.asc"
+    apt_repositories:
+      - name: hashicorp
+        uris: https://apt.releases.hashicorp.com
+        suites: "{{ ansible_facts['distribution_release'] }}"
+        components:
+          - main
+        architectures: amd64
+        signed_by: https://apt.releases.hashicorp.com/gpg
 
     # Append or override individual sysctl parameters without replacing defaults
     sysctl_extra_params:
